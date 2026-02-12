@@ -81,114 +81,122 @@ if ('serviceWorker' in navigator) {
 </div>
 <div class="member-grid" id="container">Loading...</div>
 <script>
-
-async function fetchMembers() {
-
-const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQcMuUxWF_fUMNpX8uXHMs-mTA1uuOrPiVjgQYJyh-KRpQyms_FbN9dsnMYlPwSDQJrOcUlzVkn48Mh/pub?gid=331668856&single=true&output=csv';
-const cacheKey = 'memberDataCache';
-	let rawData="";
+let allMembers = []; 
 let activeFilters = { committee: 'all', cd: 'all', lg: 'all', st:'all'};
-  try {
-    const response = await fetch(csvUrl);
-	rawData = await response.text();
-	localStorage.setItem(cacheKey, rawData);
-  }catch(error){
-	  rawData=localStorage.getItem(cacheKey);
-	  console.log("オフライン運用中...");
-  }
-	try{ 
+
+// 1. データを読み込む関数
+async function fetchMembers() {
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQcMuUxWF_fUMNpX8uXHMs-mTA1uuOrPiVjgQYJyh-KRpQyms_FbN9dsnMYlPwSDQJrOcUlzVkn48Mh/pub?gid=331668856&single=true&output=csv';
+    const cacheKey = 'memberDataCache';
+    let rawData = "";
+
+    try {
+        const response = await fetch(csvUrl);
+        rawData = await response.text();
+        localStorage.setItem(cacheKey, rawData);
+    } catch(error) {
+        rawData = localStorage.getItem(cacheKey);
+        console.log("オフライン運用中...");
+    }
+
     if (!rawData) return;
-	  
+
+    // テキストを1行ずつの配列にする
     const rows = rawData.split('\n').slice(1);
+    
+    // データを扱いやすい形（オブジェクト）に整えて保存する
+    allMembers = rows.map(row => {
+        const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+        if (cols.length < 12) return null;
+        return {
+            del: cols[2]?.replace(/"/g, '').trim() || '',
+            st:  cols[3]?.replace(/"/g, '').trim() || '',
+            id:  cols[4]?.replace(/"/g, '').trim() || '',
+            cd:  cols[5]?.replace(/"/g, '').trim() || '',
+            lg:  cols[6]?.replace(/"/g, '').trim() || '',
+            com: cols[7]?.replace(/"/g, '').trim() || '',
+            name:cols[8]?.replace(/"/g, '').trim() || '',
+            nick:cols[9]?.replace(/"/g, '').trim() || '',
+            ins: cols[10]?.replace(/"/g, '').trim() || '',
+            img: cols[11]?.replace(/"/g, '').trim() || ''
+        };
+    }).filter(m => m !== null);
+
+    // 最初に全員分を表示する
+    renderCards(allMembers);
+}
+
+// 2. 画面にカードを描画する専用の関数（これを作ると管理が楽！）
+function renderCards(dataList) {
     const container = document.getElementById('container');
     container.innerHTML = '';
 
-    rows.forEach(row => {
-      const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-      if (cols.length < 12) return;
-
-    let rawPhotoUrl = cols[11]?.replace(/"/g, '').trim() || '';
-    let finalPhotoUrl = '';
-
-    if (rawPhotoUrl.includes('drive.google.com')) {
-        const fileId = rawPhotoUrl.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1];
-        if (fileId) {
-            // thumbnail 形式 + サイズ指定。これが現在最も403を回避しやすい形式です
-            finalPhotoUrl = `https://lh3.googleusercontent.com/u/0/d/${fileId}=w400-h400-p`;
-        }
-	}
-
-      const d = {
-        del: cols[2]?.replace(/"/g, '').trim() || '',
-        st:  cols[3]?.replace(/"/g, '').trim() || '',
-        id:  cols[4]?.replace(/"/g, '').trim() || '',
-        cd:  cols[5]?.replace(/"/g, '').trim() || '',
-        lg:  cols[6]?.replace(/"/g, '').trim() || '',
-        com: cols[7]?.replace(/"/g, '').trim() || '',
-        name:cols[8]?.replace(/"/g, '').trim() || '',
-        nick:cols[9]?.replace(/"/g, '').trim() || '',
-        ins: cols[10]?.replace(/"/g, '').trim() || '',
-        img: cols[11]?.replace(/"/g, '').trim() || ''
-      };
-
-      const card = document.createElement('div');
-      card.className = 'card';
-      // 検索用データ
-      card.dataset.committee = d.com;
-      card.dataset.cd = d.cd;
-      card.dataset.lg = d.lg;
-	  card.dataset.st = d.st;
-      
-      card.innerHTML = `
-        <div class="card-header"><div class="del"><div class="del bg-${d.del}">${d.del}</div></div><img src="${d.img || 'https://api.dicebear.com/7.x/initials/svg?seed=' + d.name}"><span class="nickname">${d.nick}</span><span class="name">${d.name}</span></div><div class="card-body"><div class="info-row"><span>Status</span><span class="val">${d.st}</span></div><div class="info-row"><span>CD</span><span class="val">${d.cd}</span></div><div class="info-row"><span>LG</span><span class="val">${d.lg}</span></div><div class="info-row"><span>Committee</span><span class="val">${d.com}</span></div></div>${d.ins ? `<div class="card-footer"><a href="${d.ins}" target="_blank" class="insta-link">Instagram</a></div>` : ''}`;
-      container.appendChild(card);
+    dataList.forEach(d => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.committee = d.com;
+        card.dataset.cd = d.cd;
+        card.dataset.lg = d.lg;
+        card.dataset.st = d.st;
+        
+        card.innerHTML = `
+            <div class="card-header">
+                <div class="del"><div class="del bg-${d.del}">${d.del}</div></div>
+                <img src="${d.img || 'https://api.dicebear.com/7.x/initials/svg?seed=' + d.name}">
+                <span class="nickname">${d.nick}</span>
+                <span class="name">${d.name}</span>
+            </div>
+            <div class="card-body">
+                <div class="info-row"><span>Status</span><span class="val">${d.st}</span></div>
+                <div class="info-row"><span>CD</span><span class="val">${d.cd}</span></div>
+                <div class="info-row"><span>LG</span><span class="val">${d.lg}</span></div>
+                <div class="info-row"><span>Committee</span><span class="val">${d.com}</span></div>
+            </div>
+            ${d.ins ? `<div class="card-footer"><a href="${d.ins}" target="_blank" class="insta-link">Instagram</a></div>` : ''}
+        `;
+        container.appendChild(card);
     });
-  } catch (e) { console.error(e);}
 }
-	
 
+// 3. フィルタボタンが押された時の処理
 function filterClick(btn, type, val) {
-  // 1. ボタンの見た目を切り替える
-  const row = btn.closest('.filter-group');
-  row.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+    const row = btn.closest('.filter-group');
+    row.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
 
-  // 2. フィルター状態を保存
-  activeFilters[type] = val;
+    activeFilters[type] = val;
 
-  // 3. 全カードに対して判定を行う
-  const cards = document.querySelectorAll('.card');
-  cards.forEach(card => {
-		  const checkMatch = (filterVal, cardVal) => {
-      if (filterVal === 'all') return true;
-      const targets = filterVal.split('|'); // 'NL|SNL' を ['NL', 'SNL'] に分ける
-      return targets.includes(cardVal);     // カードの値が含まれているかチェック
-    };
-		  
-    const mCom = checkMatch(activeFilters.committee, card.dataset.committee);
-    const mCd  = checkMatch(activeFilters.cd, card.dataset.cd);
-    const mLg  = checkMatch(activeFilters.lg, card.dataset.lg);
-    const mSt  = checkMatch(activeFilters.st, card.dataset.st);
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card => {
+        const checkMatch = (filterVal, cardVal) => {
+            if (filterVal === 'all') return true;
+            const targets = filterVal.split('|');
+            return targets.includes(cardVal);
+        };
+        
+        const mCom = checkMatch(activeFilters.committee, card.dataset.committee);
+        const mCd  = checkMatch(activeFilters.cd, card.dataset.cd);
+        const mLg  = checkMatch(activeFilters.lg, card.dataset.lg);
+        const mSt  = checkMatch(activeFilters.st, card.dataset.st);
 
-    if (mCom && mCd && mLg && mSt) {
-      card.classList.remove('hide');
-    } else {
-      card.classList.add('hide');
-    }
-  });
+        if (mCom && mCd && mLg && mSt) {
+            card.classList.remove('hide');
+        } else {
+            card.classList.add('hide');
+        }
+    });
 }
-
 fetchMembers();
-		  
+
 function openModal() {
-  document.getElementById('filter-modal').style.display = 'flex';
-  document.body.classList.add('modal-open');
+    document.getElementById('filter-modal').style.display = 'flex';
+    document.body.classList.add('modal-open');
 }
 
 function closeModal() {
-  document.getElementById('filter-modal').style.display = 'none';
-  document.body.classList.remove('modal-open');
-}
+    document.getElementById('filter-modal').style.display = 'none';
+    document.body.classList.remove('modal-open');
+	
 </script>
 </body>
 </html>
