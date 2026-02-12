@@ -91,7 +91,7 @@ let activeFilters = { committee: 'all', cd: 'all', lg: 'all', st:'all'};
   try {
     const response = await fetch(csvUrl);
 	rawData = await response.text();
-	localStorage.setItem(cacheKey, csvData);
+	localStorage.setItem(cacheKey, rawData);
   }catch(error){
 	  rawData=localStorage.getItem(cacheKey);
 	  console.log("オフライン運用中...");
@@ -99,7 +99,7 @@ let activeFilters = { committee: 'all', cd: 'all', lg: 'all', st:'all'};
 	  
     if (!rawData) return;
 	  
-    const rows = text.split('\n').slice(1);
+    const rows = rawData.split('\n').slice(1);
     const container = document.getElementById('container');
     container.innerHTML = '';
 
