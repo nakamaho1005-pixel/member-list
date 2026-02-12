@@ -81,14 +81,24 @@ if ('serviceWorker' in navigator) {
 </div>
 <div class="member-grid" id="container">Loading...</div>
 <script>
-const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQcMuUxWF_fUMNpX8uXHMs-mTA1uuOrPiVjgQYJyh-KRpQyms_FbN9dsnMYlPwSDQJrOcUlzVkn48Mh/pub?gid=331668856&single=true&output=csv';
-
-let activeFilters = { committee: 'all', cd: 'all', lg: 'all', st:'all'};
 
 async function fetchMembers() {
+
+const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQcMuUxWF_fUMNpX8uXHMs-mTA1uuOrPiVjgQYJyh-KRpQyms_FbN9dsnMYlPwSDQJrOcUlzVkn48Mh/pub?gid=331668856&single=true&output=csv';
+const cacheKey = 'memberDataCache';
+	let rawData="";
+let activeFilters = { committee: 'all', cd: 'all', lg: 'all', st:'all'};
   try {
     const response = await fetch(csvUrl);
-    const text = await response.text();
+	rawData = await response.text();
+	localStorage.setItem(cacheKey, csvData);
+  }catch(error){
+	  rawData=localStorage.getItem(cacheKey);
+	  console.log("オフライン運用中...");
+  }
+	  
+    if (!rawData) return;
+	  
     const rows = text.split('\n').slice(1);
     const container = document.getElementById('container');
     container.innerHTML = '';
