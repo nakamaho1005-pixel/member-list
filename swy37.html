@@ -3,6 +3,13 @@
 <head>
 <link href="sp.css" rel="stylesheet" type="text/css">
 <link rel="stylesheet" href="swy37.css">
+<script>
+if ('serviceWorker' in navigator) {
+  // 自分のリポジトリ名に合わせたパスにする（./ でOK）
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => console.log('名簿アプリがオフラインに対応しました！'));
+}
+</script>
 </head>
 <body>
 <button id="floating-filter-btn" onclick="openModal()"> <span style="font-size: 24px;">🔍</span> </button>
